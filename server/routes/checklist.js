@@ -3,6 +3,7 @@ const router = express.Router();
 const controller = require('../controllers/checklistController');
 
 router.get('/', controller.getAll);
+router.patch('/bulk', controller.bulkUpdate);
 router.patch('/reset', controller.reset);
 router.patch('/:id', controller.update);
 router.post('/seed', controller.seed);

@@ -11,8 +11,10 @@ import '../App.css';
 export default function Home() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('todos');
+  const [dirty, setDirty] = useState(new Set());
 
   useEffect(() => {
     loadItems();
@@ -29,17 +31,32 @@ export default function Home() {
     }
   }
 
-  async function handleToggle(id) {
-    const item = items.find((i) => i._id === id);
-    if (!item) return;
+  function handleToggle(id) {
+    setItems(prev => prev.map(i =>
+      i._id === id ? { ...i, concluido: !i.concluido } : i
+    ));
+    setDirty(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
+  async function handleSave() {
+    if (dirty.size === 0) return;
+    setSaving(true);
     try {
-      const { data } = await api.patch(`/api/checklist/${id}`, {
-        concluido: !item.concluido
-      });
-      setItems((prev) => prev.map((i) => (i._id === id ? data : i)));
+      const itens = items
+        .filter(i => dirty.has(i._id))
+        .map(i => ({ _id: i._id, concluido: i.concluido }));
+      const { data } = await api.patch('/api/checklist/bulk', { itens });
+      setItems(data);
+      setDirty(new Set());
     } catch (err) {
-      console.error('Erro ao atualizar:', err);
+      console.error('Erro ao salvar:', err);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -161,6 +178,9 @@ export default function Home() {
       )}
 
       <div className="actions">
+        <button className="btn-save" onClick={handleSave} disabled={dirty.size === 0 || saving}>
+          {saving ? 'Salvando...' : `Salvar (${dirty.size})`}
+        </button>
         <button className="btn-pdf" onClick={gerarPDF}>
           Gerar PDF
         </button>

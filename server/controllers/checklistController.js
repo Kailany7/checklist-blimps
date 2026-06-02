@@ -41,6 +41,27 @@ exports.update = async (req, res) => {
   }
 };
 
+// Salvar vários itens de uma vez
+exports.bulkUpdate = async (req, res) => {
+  try {
+    const { itens } = req.body;
+    if (!Array.isArray(itens) || itens.length === 0) {
+      return res.status(400).json({ error: 'Envie um array de itens' });
+    }
+    const ops = itens.map(i => ({
+      updateOne: {
+        filter: { _id: i._id },
+        update: { concluido: i.concluido }
+      }
+    }));
+    await Checklist.bulkWrite(ops);
+    const updated = await Checklist.find().sort({ cidade: 1, local: 1 });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao salvar alterações' });
+  }
+};
+
 // Resetar checklist
 exports.reset = async (req, res) => {
   try {

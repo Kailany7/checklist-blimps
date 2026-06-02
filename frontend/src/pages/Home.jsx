@@ -106,30 +106,76 @@ export default function Home() {
   function gerarPDF() {
     const doc = new jsPDF();
     const hoje = new Date().toLocaleDateString('pt-BR');
+    const ml = 14;
+    let y = 20;
+    const pageW = doc.internal.pageSize.width;
+    const pageH = doc.internal.pageSize.height;
 
-    doc.setFontSize(18);
-    doc.text('Checklist de Instalação de Blimps', 14, 20);
-    doc.setFontSize(12);
-    doc.text(`Data de geração: ${hoje}`, 14, 30);
-    doc.text(`Concluído: ${stats.percentual}%`, 14, 38);
+    function header() {
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Checklist de Instalação de Blimps', ml, y);
+      y += 8;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100);
+      doc.text(`Gerado em ${hoje}`, ml, y);
+      y += 5;
+      doc.text(`${stats.concluidos} de ${stats.total} locais concluídos · ${stats.percentual}% · ${stats.totalBlimps} blimps instalados`, ml, y);
+      y += 12;
+      doc.setTextColor(0);
+    }
 
-    const ordenados = [...items].sort((a, b) => {
-      if (a.cidade !== b.cidade) return a.cidade.localeCompare(b.cidade);
-      return a.local.localeCompare(b.local);
-    });
-
-    let y = 50;
-    const pageHeight = doc.internal.pageSize.height;
-
-    ordenados.forEach((item) => {
-      if (y > pageHeight - 20) {
+    function checkPage() {
+      if (y > pageH - 25) {
         doc.addPage();
         y = 20;
       }
-      const status = item.concluido ? 'Concluído' : 'Pendente';
-      const texto = `${item.cidade} - ${item.local}: ${status}`;
-      doc.text(texto, 14, y);
-      y += 7;
+    }
+
+    header();
+
+    const cidades = [...new Set(items.map(i => i.cidade))].sort();
+    cidades.forEach(cidade => {
+      checkPage();
+      doc.setFillColor(240, 240, 235);
+      doc.rect(ml, y - 4, pageW - ml * 2, 7, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text(cidade, ml + 2, y);
+      y += 9;
+
+      const locais = items
+        .filter(i => i.cidade === cidade)
+        .sort((a, b) => a.local.localeCompare(b.local));
+
+      locais.forEach(item => {
+        checkPage();
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+
+        const checkX = ml;
+        const checkY = y - 3;
+        doc.setDrawColor(item.concluido ? 30 : 180, item.concluido ? 158 : 180, item.concluido ? 117 : 180);
+        doc.setLineWidth(0.4);
+        doc.rect(checkX, checkY, 4.5, 4.5);
+        if (item.concluido) {
+          doc.setDrawColor(30, 158, 117);
+          doc.setLineWidth(0.8);
+          doc.line(checkX + 0.8, checkY + 2.2, checkX + 2, checkY + 3.2);
+          doc.line(checkX + 2, checkY + 3.2, checkX + 3.8, checkY + 0.5);
+          doc.setTextColor(120);
+        } else {
+          doc.setTextColor(40);
+        }
+
+        doc.text(item.local, ml + 7, y);
+        doc.setTextColor(140);
+        doc.setFontSize(8);
+        doc.text(`${item.quantidade} blimp${item.quantidade > 1 ? 's' : ''}`, pageW - ml - 20, y);
+        y += 6.5;
+      });
+      y += 3;
     });
 
     doc.save('checklist-blimps.pdf');
